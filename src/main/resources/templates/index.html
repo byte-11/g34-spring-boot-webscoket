@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Chat App</title>
+</head>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stomp-websocket@2.3.4-next/lib/stomp.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<style>
+    body {
+        font-family: "JetBrains Mono", monospace;
+    }
+
+    li {
+        margin-top: 5px;
+    }
+
+    p {
+        margin: 0;
+        padding: 0;
+    }
+
+    .min-format {
+        font-size: 8px;
+        font-weight: bold;
+    }
+</style>
+<body>
+<h1>Simple Chat App</h1>
+<div>
+    <label for="fromInput">From:</label>
+    <input type="text" id="fromInput" placeholder="Your name">
+</div>
+<div>
+    <button id="connectButton">Connect</button>
+    <button id="subscribeButton">Subscribe</button>
+</div>
+<div id="chatWindow"
+     style="border:1px solid #000; height:300px; width:400px; overflow-y:scroll; margin-top:20px;">
+    <ul id="messageList">
+
+    </ul>
+</div>
+<div>
+    <input type="text" id="messageInput" placeholder="Type a message" style="width:300px;">
+    <button id="sendMessageButton">Send</button>
+</div>
+
+<script>
+
+    $('#connectButton').click(() => {
+        connectToWebSocket();
+    })
+    $('#subscribeButton').click(() => {
+        subscribe()
+    })
+    $('#sendMessageButton').click(() => {
+        sendMessageToChat()
+    })
+
+    const from = $('#fromInput')
+    const message = $('#messageInput')
+    const messageList = $('#messageList')
+
+    let stompClient
+
+    function connectToWebSocket() {
+        console.log("Connecting to websocket")
+        const sockJs = new SockJS("http://localhost:8080/ws")
+        stompClient = Stomp.over(sockJs);
+        stompClient.connect({}, frame => {
+            console.log('Connected [', frame, ']')
+        })
+    }
+
+    function subscribe() {
+        stompClient.subscribe(
+            '/chat',
+            message => {
+                const chatMessage = JSON.parse(message.body);
+                showMessage(chatMessage)
+            }
+        )
+    }
+
+    function sendMessageToChat() {
+        const chatMessage = new ChatMessage(from.val(), message.val());
+        console.log(chatMessage)
+        stompClient.send('/app/messages', {}, JSON.stringify(chatMessage))
+    }
+
+    function showMessage(message) {
+        messageList.append(
+            '<li>' +
+            '<p>' + message.text + '</p>' +
+            '<p class="min-format">' + message.from + '</p>' +
+            '<p class="min-format">' + message.timestamp + '</p>' +
+            '</li>'
+        )
+    }
+
+    class ChatMessage {
+        id = null;
+        from;
+        text;
+        timestamp = null;
+
+        constructor(from, text) {
+            this.from = from
+            this.text = text
+        }
+    }
+</script>
+</body>
+</html>
